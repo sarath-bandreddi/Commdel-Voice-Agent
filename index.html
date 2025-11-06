@@ -20,7 +20,6 @@
       color: var(--text-color);
     }
 
-    /* Floating Talk with AI Button */
     #widget-button {
       position: fixed;
       bottom: 24px;
@@ -43,13 +42,12 @@
       box-shadow: 0 10px 24px rgba(20, 184, 166, 0.6);
     }
 
-    /* Modal Box */
     .modal {
       display: none;
       position: fixed;
       bottom: 100px;
       right: 24px;
-      width: 280px;
+      width: 300px;
       background: rgba(15, 23, 42, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(12px);
@@ -111,6 +109,22 @@
     .close-btn:hover {
       color: #f1f5f9;
     }
+
+    /* User Info Inputs */
+    .user-info input {
+      width: 85%;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background-color: #1e293b;
+      color: #f8fafc;
+      outline: none;
+    }
+
+    .user-info input:focus {
+      border-color: var(--accent-color);
+    }
   </style>
 </head>
 <body>
@@ -120,6 +134,13 @@
 
   <!-- Mode Selector Modal -->
   <div id="mode-select-modal" class="modal">
+    <h3>Enter your details</h3>
+
+    <div class="user-info">
+      <input type="text" id="user-name" placeholder="Your name" />
+      <input type="email" id="user-email" placeholder="Your email" />
+    </div>
+
     <h3>How would you like to talk?</h3>
     <button class="modal-button" onclick="selectMode('chat')">💭 Chat Mode</button>
     <button class="modal-button" onclick="selectMode('voice')">🎙️ Voice Mode</button>
@@ -145,8 +166,17 @@
     }
 
     function selectMode(mode) {
+      const name = document.getElementById('user-name').value.trim();
+      const email = document.getElementById('user-email').value.trim();
+
+      if (!name || !email) {
+        alert('Please enter your name and email before continuing.');
+        return;
+      }
+
       modal.style.display = 'none';
 
+      // Create the widget dynamically
       const widget = document.createElement('vapi-widget');
       widget.setAttribute('public-key', 'aa01c84f-db9c-470b-811a-89bf7b9e026c');
       widget.setAttribute('assistant-id', 'e3719d19-8df5-4fc9-8a17-49d502803365');
@@ -168,9 +198,16 @@
       widget.setAttribute('terms-content', 'By clicking "Agree," you consent to the recording, storage, and sharing of your interactions as described in our Terms of Service.');
       widget.setAttribute('local-storage-key', 'vapi_widget_consent');
 
+      // ✅ Inject user data into the VAPI widget metadata
+      widget.setAttribute('metadata', JSON.stringify({
+        user_name: name,
+        user_email: email
+      }));
+
       widgetContainer.innerHTML = '';
       widgetContainer.appendChild(widget);
 
+      // Load the VAPI SDK script
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/@vapi-ai/client-sdk-react/dist/embed/widget.umd.js';
       script.type = 'text/javascript';
