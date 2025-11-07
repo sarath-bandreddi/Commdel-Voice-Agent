@@ -15,10 +15,12 @@
     body {
       font-family: "Inter", sans-serif;
       margin: 0;
+      padding: 0;
       background: var(--bg-color);
       color: var(--text-color);
     }
 
+    /* Floating Talk with AI Button */
     #widget-button {
       position: fixed;
       bottom: 24px;
@@ -41,12 +43,13 @@
       box-shadow: 0 10px 24px rgba(20, 184, 166, 0.6);
     }
 
+    /* Modal Box */
     .modal {
       display: none;
       position: fixed;
       bottom: 100px;
       right: 24px;
-      width: 300px;
+      width: 280px;
       background: rgba(15, 23, 42, 0.95);
       border: 1px solid rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(12px);
@@ -59,8 +62,14 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .modal h3 {
@@ -99,49 +108,25 @@
       transition: color 0.2s ease;
     }
 
-    .close-btn:hover { color: #f1f5f9; }
+    .close-btn:hover {
+      color: #f1f5f9;
+    }
 
-    .user-info input {
+    /* Input Fields */
+    input[type="text"],
+    input[type="email"] {
       width: 85%;
-      padding: 8px 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #334155;
-      background-color: #1e293b;
-      color: #f8fafc;
-      outline: none;
-    }
-
-    .user-info input:focus {
-      border-color: var(--accent-color);
-    }
-
-    #chat-box {
-      display: none;
-      position: fixed;
-      bottom: 90px;
-      right: 24px;
-      width: 280px;
-      background: rgba(15, 23, 42, 0.95);
-      border-radius: 20px;
-      padding: 16px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
-    }
-
-    #chat-messages {
-      height: 180px;
-      overflow-y: auto;
-      margin-bottom: 8px;
+      padding: 8px;
+      margin: 8px 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
       font-size: 14px;
     }
 
-    #chat-input {
-      width: 100%;
-      padding: 8px;
-      border-radius: 8px;
-      border: none;
-      background: #1e293b;
-      color: white;
+    input::placeholder {
+      color: #cbd5e1;
     }
   </style>
 </head>
@@ -150,103 +135,101 @@
   <!-- Floating Button -->
   <button id="widget-button">💬 Talk with AI</button>
 
-  <!-- Modal -->
-  <div id="mode-select-modal" class="modal">
-    <h3>Enter your details</h3>
-    <div class="user-info">
-      <input type="text" id="user-name" placeholder="Your name" />
-      <input type="email" id="user-email" placeholder="Your email" />
-    </div>
-
-    <h3>Choose mode</h3>
-    <button class="modal-button" onclick="startCall('chat')">💭 Chat Mode</button>
-    <button class="modal-button" onclick="startCall('voice')">🎙️ Voice Mode</button>
+  <!-- User Info Modal -->
+  <div id="user-info-modal" class="modal">
+    <h3>Before we start...</h3>
+    <input type="text" id="nameTextbox" placeholder="Your Name" />
+    <input type="email" id="emailTextbox" placeholder="Your Email" />
+    <button class="modal-button" onclick="submitUserInfo()">Continue</button>
     <button class="close-btn" onclick="closeModal()">Cancel</button>
   </div>
 
-  <!-- Simple Chat UI -->
-  <div id="chat-box">
-    <div id="chat-messages"></div>
-    <input type="text" id="chat-input" placeholder="Type your message..." />
+  <!-- Mode Selector Modal -->
+  <div id="mode-select-modal" class="modal">
+    <h3>How would you like to talk?</h3>
+    <button class="modal-button" onclick="selectMode('chat')">💭 Chat Mode</button>
+    <button class="modal-button" onclick="selectMode('voice')">🎙️ Voice Mode</button>
+    <button class="close-btn" onclick="closeModal()">Cancel</button>
   </div>
 
-  <!-- ✅ Load the Vapi SDK (UMD global build) -->
-  <script src="https://unpkg.com/@vapi-ai/web"></script>
+  <!-- Widget Container -->
+  <div id="widget-container"></div>
+
   <script>
-    // ✅ Access Vapi from global scope (provided by SDK)
-    const vapi = new Vapi('aa01c84f-db9c-470b-811a-89bf7b9e026c'); // your public key
-    const ASSISTANT_ID = 'e3719d19-8df5-4fc9-8a17-49d502803365';
-
     const widgetButton = document.getElementById('widget-button');
-    const modal = document.getElementById('mode-select-modal');
-    const chatBox = document.getElementById('chat-box');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
+    const userInfoModal = document.getElementById('user-info-modal');
+    const modeModal = document.getElementById('mode-select-modal');
+    const widgetContainer = document.getElementById('widget-container');
 
-    widgetButton.onclick = () => {
-      modal.style.display = 'block';
+    let userData = { name: "", email: "" };
+
+    widgetButton.addEventListener('click', () => {
+      userInfoModal.style.display = 'block';
       widgetButton.style.display = 'none';
-    };
+    });
 
     function closeModal() {
-      modal.style.display = 'none';
+      userInfoModal.style.display = 'none';
+      modeModal.style.display = 'none';
       widgetButton.style.display = 'block';
     }
 
-    async function startCall(mode) {
-      const name = document.getElementById('user-name').value.trim();
-      const email = document.getElementById('user-email').value.trim();
+    function submitUserInfo() {
+      const name = document.getElementById('nameTextbox').value.trim();
+      const email = document.getElementById('emailTextbox').value.trim();
 
       if (!name || !email) {
-        alert('Please enter both name and email.');
+        alert("Please enter both name and email.");
         return;
       }
 
-      modal.style.display = 'none';
+      userData = { name, email };
 
-      // ✅ Start assistant session with variableValues
-      await vapi.start({
-        assistantId: ASSISTANT_ID,
-        assistantOverrides: {
-          variableValues: { name, email },
-        },
-      });
-
-      // 🗣️ Send greeting message
-      vapi.send({
-        type: 'input_text',
-        text: `Hi, my name is ${name}. Nice to meet you!`,
-      });
-
-      // ✅ If chat mode, show chat interface
-      if (mode === 'chat') {
-        chatBox.style.display = 'block';
-
-        // Listen for assistant replies
-        vapi.on('message', (msg) => {
-          if (msg.type === 'output_text') {
-            appendMessage('assistant', msg.text);
-          }
-        });
-
-        chatInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && chatInput.value.trim()) {
-            const text = chatInput.value.trim();
-            chatInput.value = '';
-            appendMessage('user', text);
-            vapi.send({ type: 'input_text', text });
-          }
-        });
-      } else {
-        console.log('🎙️ Voice mode: Assistant will respond vocally.');
-      }
+      userInfoModal.style.display = 'none';
+      modeModal.style.display = 'block';
     }
 
-    function appendMessage(role, text) {
-      const div = document.createElement('div');
-      div.textContent = `${role === 'user' ? '🧑 ' : '🤖 '}${text}`;
-      chatMessages.appendChild(div);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+    function selectMode(mode) {
+      modeModal.style.display = 'none';
+
+      const assistantOverrides = {
+        variableValues: {
+          name: userData.name,
+          email: userData.email,
+        }
+      };
+
+      const widget = document.createElement('vapi-widget');
+      widget.setAttribute('public-key', 'aa01c84f-db9c-470b-811a-89bf7b9e026c');
+      widget.setAttribute('assistant-id', 'e3719d19-8df5-4fc9-8a17-49d502803365');
+      widget.setAttribute('mode', mode);
+      widget.setAttribute('theme', 'dark');
+      widget.setAttribute('base-color', '#000000');
+      widget.setAttribute('accent-color', '#14B8A6');
+      widget.setAttribute('button-base-color', '#000000');
+      widget.setAttribute('button-accent-color', '#ffffff');
+      widget.setAttribute('radius', 'large');
+      widget.setAttribute('size', 'compact');
+      widget.setAttribute('position', 'bottom-right');
+      widget.setAttribute('main-label', 'Talk with AI');
+      widget.setAttribute('start-button-text', 'Start');
+      widget.setAttribute('end-button-text', 'End Call');
+      widget.setAttribute('empty-chat-message', 'Hey, how can I help you today?');
+      widget.setAttribute('show-transcript', 'true');
+      widget.setAttribute('require-consent', 'true');
+      widget.setAttribute('terms-content', 'By clicking "Agree," you consent to the recording, storage, and sharing of your interactions as described in our Terms of Service.');
+      widget.setAttribute('local-storage-key', 'vapi_widget_consent');
+
+      // Inject assistantOverrides into widget if SDK supports it
+      widget.assistantOverrides = assistantOverrides;
+
+      widgetContainer.innerHTML = '';
+      widgetContainer.appendChild(widget);
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/@vapi-ai/client-sdk-react/dist/embed/widget.umd.js';
+      script.type = 'text/javascript';
+      document.body.appendChild(script);
     }
   </script>
 </body>
